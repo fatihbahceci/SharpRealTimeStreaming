@@ -52,7 +52,7 @@ namespace SharpRTSPMultiChannelServer
             {
                 if (_payloadType < 0)
                 {
-                    return RTSPServer.DYNAMIC_PAYLOAD_TYPE + ID;
+                    return RTSPMultiChannelServer.DYNAMIC_PAYLOAD_TYPE + ID;
                 }
                 else
                 {

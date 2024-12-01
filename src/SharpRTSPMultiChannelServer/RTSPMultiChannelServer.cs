@@ -28,7 +28,7 @@ namespace SharpRTSPMultiChannelServer
     /// <remarks>
     /// Stream with ffmpeg: ffmpeg.exe -re -stream_loop -1 -i frag_bunny.mp4 -vcodec copy -an -f rtp rtp://127.0.0.1:11111 -vn -acodec copy -f rtp rtp://127.0.0.1:11113
     /// </remarks>
-    public class RTSPServer : IRtpSender, IDisposable
+    public class RTSPMultiChannelServer : IRtpSender, IDisposable
     {
         /// <summary>
         /// Dynamic RTP payload type.
@@ -73,21 +73,21 @@ namespace SharpRTSPMultiChannelServer
         public bool IsRTSPS { get; set; } = false;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPServer"/> class.
+        /// Initializes a new instance of the <see cref="RTSPMultiChannelServer"/> class.
         /// </summary>
         /// <param name="portNumber">Port number.</param>
         /// <param name="userName">username.</param>
         /// <param name="password">password.</param>
-        public RTSPServer(int portNumber, string userName, string password) : this(portNumber, userName, password, new CustomLoggerFactory())
+        public RTSPMultiChannelServer(int portNumber, string userName, string password) : this(portNumber, userName, password, new CustomLoggerFactory())
         { }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RTSPServer"/> class.
+        /// Initializes a new instance of the <see cref="RTSPMultiChannelServer"/> class.
         /// </summary>
         /// <param name="portNumber">Port number.</param>
         /// <param name="userName">username.</param>
         /// <param name="password">password.</param>
-        public RTSPServer(int portNumber, string userName, string password, ILoggerFactory loggerFactory)
+        public RTSPMultiChannelServer(int portNumber, string userName, string password, ILoggerFactory loggerFactory)
         {
             if (portNumber < IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort)
             {
@@ -111,7 +111,7 @@ namespace SharpRTSPMultiChannelServer
             RtspUtils.RegisterUri();
             _serverListener = new TcpListener(IPAddress.Any, portNumber);
             _loggerFactory = loggerFactory;
-            _logger = loggerFactory.CreateLogger<RTSPServer>();
+            _logger = loggerFactory.CreateLogger<RTSPMultiChannelServer>();
         }
 
         public void AddVideoTrack(ITrack track)
