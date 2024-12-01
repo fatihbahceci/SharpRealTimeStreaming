@@ -3,7 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SharpRTSPMultiChanelServer
+namespace SharpRTSPMultiChannelServer
 {
     /// <summary>
     /// H264 video track.

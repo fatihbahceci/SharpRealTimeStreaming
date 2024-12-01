@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SharpRTSPMultiChanelServer
+namespace SharpRTSPMultiChannelServer
 {
     public static class Log
     {

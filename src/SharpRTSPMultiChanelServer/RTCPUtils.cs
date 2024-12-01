@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers.Binary;
 
-namespace SharpRTSPMultiChanelServer
+namespace SharpRTSPMultiChannelServer
 {
     public static class RTCPUtils
     {

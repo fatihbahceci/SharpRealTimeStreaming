@@ -14,7 +14,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace SharpRTSPMultiChanelServer
+namespace SharpRTSPMultiChannelServer
 {
     /// <summary>
     /// RTSP Server Example (c) Roger Hardiman, 2016, 2018, 2020, modified by Lukas Volf, 2024
@@ -98,7 +98,7 @@ namespace SharpRTSPMultiChanelServer
 
             if (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(password))
             {
-                const string realm = "SharpRTSPMultiChanelServer";
+                const string realm = "SharpRTSPMultiChannelServer";
                 _credentials = new NetworkCredential(userName, password);
                 _authentication = new AuthenticationDigest(_credentials, realm, new Random().Next(100000000, 999999999).ToString(), string.Empty);
             }
@@ -975,36 +975,36 @@ namespace SharpRTSPMultiChanelServer
             {
                 case LogLevel.Trace:
                     {
-                        if (SharpRTSPMultiChanelServer.Log.TraceEnabled)
+                        if (SharpRTSPMultiChannelServer.Log.TraceEnabled)
                         {
-                            SharpRTSPMultiChanelServer.Log.Trace(formatter.Invoke(state, exception));
+                            SharpRTSPMultiChannelServer.Log.Trace(formatter.Invoke(state, exception));
                         }
                     }
                     break;
 
                 case LogLevel.Debug:
                     {
-                        if (SharpRTSPMultiChanelServer.Log.DebugEnabled)
+                        if (SharpRTSPMultiChannelServer.Log.DebugEnabled)
                         {
-                            SharpRTSPMultiChanelServer.Log.Debug(formatter.Invoke(state, exception));
+                            SharpRTSPMultiChannelServer.Log.Debug(formatter.Invoke(state, exception));
                         }
                     }
                     break;
 
                 case LogLevel.Information:
                     {
-                        if (SharpRTSPMultiChanelServer.Log.InfoEnabled)
+                        if (SharpRTSPMultiChannelServer.Log.InfoEnabled)
                         {
-                            SharpRTSPMultiChanelServer.Log.Info(formatter.Invoke(state, exception));
+                            SharpRTSPMultiChannelServer.Log.Info(formatter.Invoke(state, exception));
                         }
                     }
                     break;
 
                 case LogLevel.Warning:
                     {
-                        if (SharpRTSPMultiChanelServer.Log.WarnEnabled)
+                        if (SharpRTSPMultiChannelServer.Log.WarnEnabled)
                         {
-                            SharpRTSPMultiChanelServer.Log.Warn(formatter.Invoke(state, exception));
+                            SharpRTSPMultiChannelServer.Log.Warn(formatter.Invoke(state, exception));
                         }
                     }
                     break;
@@ -1012,9 +1012,9 @@ namespace SharpRTSPMultiChanelServer
                 case LogLevel.Error:
                 case LogLevel.Critical:
                     {
-                        if (SharpRTSPMultiChanelServer.Log.ErrorEnabled)
+                        if (SharpRTSPMultiChannelServer.Log.ErrorEnabled)
                         {
-                            SharpRTSPMultiChanelServer.Log.Error(formatter.Invoke(state, exception));
+                            SharpRTSPMultiChannelServer.Log.Error(formatter.Invoke(state, exception));
                         }
                     }
                     break;

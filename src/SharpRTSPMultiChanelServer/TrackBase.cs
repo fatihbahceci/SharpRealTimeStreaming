@@ -3,7 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SharpRTSPMultiChanelServer
+namespace SharpRTSPMultiChannelServer
 {
     public abstract class TrackBase : ITrack
     {
