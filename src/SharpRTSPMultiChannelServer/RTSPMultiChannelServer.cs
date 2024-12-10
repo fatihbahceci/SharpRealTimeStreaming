@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Rtsp;
 using Rtsp.Messages;
-using Rtsp.Sdp;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -24,6 +23,9 @@ namespace SharpRTSPMultiChannelServer
     ///
     /// Creates a server to listen for RTSP Commands (eg OPTIONS, DESCRIBE, SETUP, PLAY)
     /// Accepts VPS/SPS/PPS/NAL H264/H265 video data and sends out to RTSP clients
+    /// 
+    /// RTSPMultiChannelServer is a RTSP Server that can send multiple Video and Audio (eg all cameras on a DVR) to multiple clients
+    /// It is evolved from the RTSPServer example by Fatih Bahceci 2024.
     /// </summary>
     /// <remarks>
     /// Stream with ffmpeg: ffmpeg.exe -re -stream_loop -1 -i frag_bunny.mp4 -vcodec copy -an -f rtp rtp://127.0.0.1:11111 -vn -acodec copy -f rtp rtp://127.0.0.1:11113
@@ -39,15 +41,7 @@ namespace SharpRTSPMultiChannelServer
 
         private static readonly Random _rand = new Random();
 
-        /// <summary>
-        /// Video track. Must be set before starting the server.
-        /// </summary>
-        private ITrack VideoTrack;
-
-        /// <summary>
-        /// Audio track.
-        /// </summary>
-        private ITrack AudioTrack;
+        private ITracksProvider tracks;
 
         /// <summary>
         /// SSRC.
@@ -78,7 +72,7 @@ namespace SharpRTSPMultiChannelServer
         /// <param name="portNumber">Port number.</param>
         /// <param name="userName">username.</param>
         /// <param name="password">password.</param>
-        public RTSPMultiChannelServer(int portNumber, string userName, string password) : this(portNumber, userName, password, new CustomLoggerFactory())
+        public RTSPMultiChannelServer(int portNumber, string userName, string password,ITracksProvider tracksProvider) : this(portNumber, userName, password, tracksProvider, new CustomLoggerFactory())
         { }
 
         /// <summary>
@@ -87,8 +81,12 @@ namespace SharpRTSPMultiChannelServer
         /// <param name="portNumber">Port number.</param>
         /// <param name="userName">username.</param>
         /// <param name="password">password.</param>
-        public RTSPMultiChannelServer(int portNumber, string userName, string password, ILoggerFactory loggerFactory)
+        public RTSPMultiChannelServer(int portNumber, string userName, string password, ITracksProvider tracksProvider, ILoggerFactory loggerFactory)
         {
+            if (tracksProvider == null)
+                throw new ArgumentNullException(nameof(tracksProvider));
+            this.tracks = tracksProvider;
+
             if (portNumber < IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort)
             {
                 throw new ArgumentOutOfRangeException(nameof(portNumber), portNumber, "Port number must be between System.Net.IPEndPoint.MinPort and System.Net.IPEndPoint.MaxPort");
@@ -114,23 +112,6 @@ namespace SharpRTSPMultiChannelServer
             _logger = loggerFactory.CreateLogger<RTSPMultiChannelServer>();
         }
 
-        public void AddVideoTrack(ITrack track)
-        {
-            if (track != null)
-            {
-                track.Sink = this;
-            }
-            this.VideoTrack = track;
-        }
-
-        public void AddAudioTrack(ITrack track)
-        {
-            if (track != null)
-            {
-                track.Sink = this;
-            }
-            this.AudioTrack = track;
-        }
 
         /// <summary>
         /// Starts the server listener.
@@ -431,8 +412,9 @@ namespace SharpRTSPMultiChannelServer
                         // In the SDP the H264/H265 video track is TrackID 0
                         // and the Audio Track is TrackID 1
                         RTPStream stream;
-                        if (setupMessage.RtspUri.AbsolutePath.EndsWith($"trackID={VideoTrack?.ID}")) stream = setupConnection.Video;
-                        else if (setupMessage.RtspUri.AbsolutePath.EndsWith($"trackID={AudioTrack?.ID}")) stream = setupConnection.Audio;
+                        var track = tracks.GetTracks(this, setupMessage.RtspUri.ToString());
+                        if (setupMessage.RtspUri.AbsolutePath.EndsWith($"trackID={track.VideoTrack?.ID}")) stream = setupConnection.Video;
+                        else if (setupMessage.RtspUri.AbsolutePath.EndsWith($"trackID={track.AudioTrack?.ID}")) stream = setupConnection.Audio;
                         else continue;// error case - track unknown
                                       // found the connection
                                       // Add the transports to the stream
@@ -473,9 +455,9 @@ namespace SharpRTSPMultiChannelServer
             _logger.LogDebug("Request for {RtspUri}", message.RtspUri);
 
             // TODO. Check the requstedUrl is valid. In this example we accept any RTSP URL
-
+            var track = tracks.GetTracks(this, message.RtspUri.ToString()); 
             // if the SPS and PPS are not defined yet, we have to return an error
-            if (VideoTrack == null || !VideoTrack.IsReady || (AudioTrack != null && !AudioTrack.IsReady))
+            if (track.VideoTrack == null || !track.VideoTrack.IsReady || (track.AudioTrack != null && !track.AudioTrack.IsReady))
             {
                 RtspResponse describeResponse2 = message.CreateResponse();
                 describeResponse2.ReturnCode = 400; // 400 Bad Request
@@ -483,7 +465,7 @@ namespace SharpRTSPMultiChannelServer
                 return;
             }
 
-            string sdp = GenerateSDP();
+            string sdp = GenerateSDP(track);
             byte[] sdpBytes = Encoding.ASCII.GetBytes(sdp);
 
             // Create the reponse to DESCRIBE
@@ -497,7 +479,7 @@ namespace SharpRTSPMultiChannelServer
             listener.SendMessage(describeResponse);
         }
 
-        private string GenerateSDP()
+        private string GenerateSDP(Tracks track)
         {
             if(!string.IsNullOrEmpty(_sdp))
                 return _sdp; // sdp
@@ -513,10 +495,10 @@ namespace SharpRTSPMultiChannelServer
             sdp.Append("c=IN IP4 0.0.0.0\n");
 
             // VIDEO
-            VideoTrack?.BuildSDP(sdp);
+            track.VideoTrack?.BuildSDP(sdp);
 
             // AUDIO
-            AudioTrack?.BuildSDP(sdp);
+            track.AudioTrack?.BuildSDP(sdp);
 
             return sdp.ToString();
         }
@@ -745,18 +727,6 @@ namespace SharpRTSPMultiChannelServer
             {
                 StopListen();
                 _stopping?.Dispose();
-
-                if(VideoTrack is IDisposable disposableVideoTrack)
-                {
-                    disposableVideoTrack.Dispose();
-                    VideoTrack = null;
-                }
-
-                if (AudioTrack is IDisposable disposableAudioTrack)
-                {
-                    disposableAudioTrack.Dispose();
-                    AudioTrack = null;
-                }
             }
         }
 
@@ -858,6 +828,7 @@ namespace SharpRTSPMultiChannelServer
 
             /// <summary>
             /// RTSP Session ID used with this client connection.
+            /// This property is should be unique for each client. (sessionID in the RTSP spec)
             /// </summary>
             public string SessionId { get; set; } = ""; 
 
