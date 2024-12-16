@@ -249,12 +249,15 @@ namespace SharpRTSPMultiChannelServer
             switch (message)
             {
                 case RtspRequestOptions optionsMessage:
+                    _logger.LogDebug("Options message received");
                     listener.SendMessage(message.CreateResponse());
                     return;
                 case RtspRequestDescribe describeMessage:
+                    _logger.LogDebug("Describe message received");
                     HandleDescribe(listener, message);
                     return;
                 case RtspRequestSetup setupMessage:
+                    _logger.LogDebug("Setup message received");
                     HandleSetup(listener, setupMessage);
                     return;
             }
@@ -413,8 +416,9 @@ namespace SharpRTSPMultiChannelServer
                         // and the Audio Track is TrackID 1
                         RTPStream stream;
                         var track = tracks.GetTracks(this, setupMessage.RtspUri.ToString());
-                        if (setupMessage.RtspUri.AbsolutePath.EndsWith($"trackID={track.VideoTrack?.ID}")) stream = setupConnection.Video;
-                        else if (setupMessage.RtspUri.AbsolutePath.EndsWith($"trackID={track.AudioTrack?.ID}")) stream = setupConnection.Audio;
+                        //AbsoluteUri is not working properly, so we have to use ToString() instead
+                        if (setupMessage.RtspUri.ToString().EndsWith($"trackID={track.VideoTrack?.ID}")) stream = setupConnection.Video;
+                        else if (setupMessage.RtspUri.ToString().EndsWith($"trackID={track.AudioTrack?.ID}")) stream = setupConnection.Audio;
                         else continue;// error case - track unknown
                                       // found the connection
                                       // Add the transports to the stream
