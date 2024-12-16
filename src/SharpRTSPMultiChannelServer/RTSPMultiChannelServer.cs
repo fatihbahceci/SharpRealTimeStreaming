@@ -72,7 +72,7 @@ namespace SharpRTSPMultiChannelServer
         /// <param name="portNumber">Port number.</param>
         /// <param name="userName">username.</param>
         /// <param name="password">password.</param>
-        public RTSPMultiChannelServer(int portNumber, string userName, string password,ITracksProvider tracksProvider) : this(portNumber, userName, password, tracksProvider, new CustomLoggerFactory())
+        public RTSPMultiChannelServer(int portNumber, string userName, string password, ITracksProvider tracksProvider) : this(portNumber, userName, password, tracksProvider, new CustomLoggerFactory())
         { }
 
         /// <summary>
@@ -246,20 +246,32 @@ namespace SharpRTSPMultiChannelServer
             }
 
             // Handle message without session
-            switch (message)
+            try
             {
-                case RtspRequestOptions optionsMessage:
-                    _logger.LogDebug("Options message received");
-                    listener.SendMessage(message.CreateResponse());
-                    return;
-                case RtspRequestDescribe describeMessage:
-                    _logger.LogDebug("Describe message received");
-                    HandleDescribe(listener, message);
-                    return;
-                case RtspRequestSetup setupMessage:
-                    _logger.LogDebug("Setup message received");
-                    HandleSetup(listener, setupMessage);
-                    return;
+                switch (message)
+                {
+                    case RtspRequestOptions optionsMessage:
+                        _logger.LogDebug("Options message received");
+                        listener.SendMessage(message.CreateResponse());
+                        return;
+                    case RtspRequestDescribe describeMessage:
+                        _logger.LogDebug("Describe message received");
+                        HandleDescribe(listener, message);
+                        return;
+                    case RtspRequestSetup setupMessage:
+                        _logger.LogDebug("Setup message received");
+                        HandleSetup(listener, setupMessage);
+                        return;
+                }
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError(exc, "Error handling message without session");
+                RtspResponse errorResponse = message.CreateResponse();
+                errorResponse.ReturnCode = 500; // Internal Server Error
+                errorResponse.ReturnMessage = exc.Message;
+                listener.SendMessage(errorResponse);
+                return;
             }
 
             // handle message needing session from here
@@ -459,7 +471,7 @@ namespace SharpRTSPMultiChannelServer
             _logger.LogDebug("Request for {RtspUri}", message.RtspUri);
 
             // TODO. Check the requstedUrl is valid. In this example we accept any RTSP URL
-            var track = tracks.GetTracks(this, message.RtspUri.ToString()); 
+            var track = tracks.GetTracks(this, message.RtspUri.ToString());
             // if the SPS and PPS are not defined yet, we have to return an error
             if (track.VideoTrack == null || !track.VideoTrack.IsReady || (track.AudioTrack != null && !track.AudioTrack.IsReady))
             {
@@ -485,7 +497,7 @@ namespace SharpRTSPMultiChannelServer
 
         private string GenerateSDP(Tracks track)
         {
-            if(!string.IsNullOrEmpty(_sdp))
+            if (!string.IsNullOrEmpty(_sdp))
                 return _sdp; // sdp
 
             StringBuilder sdp = new StringBuilder();
@@ -509,7 +521,7 @@ namespace SharpRTSPMultiChannelServer
 
         private RTSPConnection ConnectionByRtpTransport(IRtpTransport rtpTransport)
         {
-            if (rtpTransport == null) 
+            if (rtpTransport == null)
                 return null;
 
             lock (_connectionList)
@@ -520,7 +532,7 @@ namespace SharpRTSPMultiChannelServer
 
         private RTSPConnection ConnectionBySessionId(string sessionId)
         {
-            if (sessionId == null) 
+            if (sessionId == null)
                 return null;
 
             lock (_connectionList)
@@ -701,7 +713,7 @@ namespace SharpRTSPMultiChannelServer
 
         private static string TransportLogName(IRtpTransport transport)
         {
-            switch(transport)
+            switch (transport)
             {
                 case RtpTcpTransport _:
                     return "TCP";
@@ -746,7 +758,7 @@ namespace SharpRTSPMultiChannelServer
                     // we have to fill in the trackID to identify the session in RTSP
                     using (var textReader = new StringReader(sdp))
                     {
-                        while(true)
+                        while (true)
                         {
                             string line = textReader.ReadLine();
 
@@ -755,7 +767,7 @@ namespace SharpRTSPMultiChannelServer
 
                             builder.AppendLine(line);
 
-                            if(line.StartsWith("m="))
+                            if (line.StartsWith("m="))
                             {
                                 builder.AppendLine($"a=control:trackID={mediaIndex++}");
                             }
@@ -834,7 +846,7 @@ namespace SharpRTSPMultiChannelServer
             /// RTSP Session ID used with this client connection.
             /// This property is should be unique for each client. (sessionID in the RTSP spec)
             /// </summary>
-            public string SessionId { get; set; } = ""; 
+            public string SessionId { get; set; } = "";
 
             /// <summary>
             /// Video stream.
@@ -906,7 +918,7 @@ namespace SharpRTSPMultiChannelServer
         /// <param name="rtpTimestamp">RTP timestamp in the timescale of the track.</param>
         /// <returns>RTP packets.</returns>
         (List<Memory<byte>>, List<IMemoryOwner<byte>>) CreateRtpPackets(List<byte[]> samples, uint rtpTimestamp);
-        
+
         void FeedInRawSamples(uint rtpTimestamp, List<byte[]> samples);
     }
 
