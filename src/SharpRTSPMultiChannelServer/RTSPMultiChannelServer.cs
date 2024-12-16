@@ -64,6 +64,8 @@ namespace SharpRTSPMultiChannelServer
         private readonly NetworkCredential _credentials;
         private readonly Authentication _authentication;
 
+        public event EventHandler<string> ClientRemoved;
+
         public bool IsRTSPS { get; set; } = false;
 
         /// <summary>
@@ -216,6 +218,7 @@ namespace SharpRTSPMultiChannelServer
 
                         lock (_connectionList)
                         {
+                            ClientRemoved?.Invoke(this, listener.RemoteAdress);
                             _connectionList.RemoveAll(c => c.Listener == listener);
                         }
                         listener.Dispose();
@@ -427,7 +430,7 @@ namespace SharpRTSPMultiChannelServer
                         // In the SDP the H264/H265 video track is TrackID 0
                         // and the Audio Track is TrackID 1
                         RTPStream stream;
-                        var track = tracks.GetTracks(this, setupMessage.RtspUri.ToString());
+                        var track = tracks.GetTracks(this, setupConnection.Listener.RemoteAdress, setupMessage.RtspUri.ToString());
                         //AbsoluteUri is not working properly, so we have to use ToString() instead
                         if (setupMessage.RtspUri.ToString().EndsWith($"trackID={track.VideoTrack?.ID}")) stream = setupConnection.Video;
                         else if (setupMessage.RtspUri.ToString().EndsWith($"trackID={track.AudioTrack?.ID}")) stream = setupConnection.Audio;
@@ -471,7 +474,7 @@ namespace SharpRTSPMultiChannelServer
             _logger.LogDebug("Request for {RtspUri}", message.RtspUri);
 
             // TODO. Check the requstedUrl is valid. In this example we accept any RTSP URL
-            var track = tracks.GetTracks(this, message.RtspUri.ToString());
+            var track = tracks.GetTracks(this, listener.RemoteAdress, message.RtspUri.ToString());
             // if the SPS and PPS are not defined yet, we have to return an error
             if (track.VideoTrack == null || !track.VideoTrack.IsReady || (track.AudioTrack != null && !track.AudioTrack.IsReady))
             {
@@ -702,6 +705,7 @@ namespace SharpRTSPMultiChannelServer
 
         private void RemoveSession(RTSPConnection connection)
         {
+            ClientRemoved?.Invoke(this, connection.Listener.RemoteAdress);
             connection.Play = false; // stop sending data
             connection.Video.RtpChannel?.Dispose();
             connection.Video.RtpChannel = null;
@@ -878,6 +882,12 @@ namespace SharpRTSPMultiChannelServer
     {
         void FeedInRawRTP(int streamType, uint rtpTimestamp, List<Memory<byte>> rtpPackets);
         bool CanAcceptNewSamples();
+        //Create an event named ClientRemoved having client ip address as parameter
+        /// <summary>
+        /// Client removed event. Parameter is the client IP address and ID port.
+        /// </summary>
+        event EventHandler<string> ClientRemoved;
+
     }
 
     public interface ITrack
