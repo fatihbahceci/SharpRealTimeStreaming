@@ -134,7 +134,7 @@ namespace SharpRTSPMultiChannelServer
                 {
                     // Wait for an incoming TCP Connection
                     TcpClient oneClient = _serverListener.AcceptTcpClient();
-                    _logger.LogDebug("Connection from {remoteEndPoint}", oneClient.Client.RemoteEndPoint);
+                    _logger.LogInformation("Connection from {remoteEndPoint}", oneClient.Client.RemoteEndPoint);
 
                     // Hand the incoming TCP connection over to the RTSP classes
                     RtspTcpTransport rtspSocket;
@@ -218,6 +218,7 @@ namespace SharpRTSPMultiChannelServer
 
                         lock (_connectionList)
                         {
+                            _logger.LogWarning("Removing session {remoteAdress} due to invalid authentication", listener.RemoteAdress);
                             ClientRemoved?.Invoke(this, listener.RemoteAdress);
                             _connectionList.RemoveAll(c => c.Listener == listener);
                         }
@@ -281,6 +282,7 @@ namespace SharpRTSPMultiChannelServer
             var connection = ConnectionBySessionId(message.Session);
             if (connection is null)
             {
+                _logger.LogWarning("Session ID was not found in the list of Sessions. Send a 454 error");
                 // Session ID was not found in the list of Sessions. Send a 454 error
                 RtspResponse notFound = message.CreateResponse();
                 notFound.ReturnCode = 454; // Session Not Found
@@ -705,6 +707,7 @@ namespace SharpRTSPMultiChannelServer
 
         private void RemoveSession(RTSPConnection connection)
         {
+            _logger.LogInformation("Removing session {sessionId} {remoteAdress}", connection.SessionId, connection.Listener.RemoteAdress);
             ClientRemoved?.Invoke(this, connection.Listener.RemoteAdress);
             connection.Play = false; // stop sending data
             connection.Video.RtpChannel?.Dispose();
