@@ -24,7 +24,7 @@ namespace SharpRTSPMultiChannelServer
 
         public abstract (List<Memory<byte>>, List<IMemoryOwner<byte>>) CreateRtpPackets(List<byte[]> samples, uint rtpTimestamp);
 
-        public virtual void FeedInRawSamples(uint rtpTimestamp, List<byte[]> samples)
+        public virtual void FeedInRawSamples(uint rtpTimestamp, List<byte[]> samples, string[] forIps)
         {
             if (Sink == null)
                 throw new InvalidOperationException("Sink is null!!!");
@@ -37,7 +37,7 @@ namespace SharpRTSPMultiChannelServer
 
             (List<Memory<byte>> rtpPackets, List<IMemoryOwner<byte>> memoryOwners) = CreateRtpPackets(samples, rtpTimestamp);
 
-            Sink.FeedInRawRTP(ID, rtpTimestamp, rtpPackets);
+            Sink.FeedInRawRTP(ID, rtpTimestamp, rtpPackets, forIps);
 
             foreach (var owner in memoryOwners)
             {

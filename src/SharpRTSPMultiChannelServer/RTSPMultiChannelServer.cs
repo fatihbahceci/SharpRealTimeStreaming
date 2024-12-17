@@ -581,7 +581,15 @@ namespace SharpRTSPMultiChannelServer
             return true;
         }
 
-        public void FeedInRawRTP(int streamType, uint rtpTimestamp, List<Memory<byte>> rtpPackets)
+        /// <summary>
+        /// TODO: English. This method scans all clients each time. This can cause performance problems when there are too many clients. -FBC
+        /// </summary>
+        /// <param name="streamType"></param>
+        /// <param name="rtpTimestamp"></param>
+        /// <param name="rtpPackets"></param>
+        /// <param name="forIps"></param>
+        /// <exception cref="ArgumentException"></exception>
+        public void FeedInRawRTP(int streamType, uint rtpTimestamp, List<Memory<byte>> rtpPackets, string[] forIps)
         {
             if (streamType != 0 && streamType != 1)
                 throw new ArgumentException("Invalid streamType! Video = 0, Audio = 1");
@@ -591,14 +599,18 @@ namespace SharpRTSPMultiChannelServer
                 // Go through each RTSP connection and output the RTP on the Session
                 foreach (RTSPConnection connection in _connectionList.ToArray()) // ToArray makes a temp copy of the list. This lets us delete items in the foreach eg when there is Write Error
                 {
+                    if (!forIps.Contains(connection.Listener.RemoteAdress))
+                    {
+                        continue;
+                    }
                     // Only process Sessions in Play Mode
                     if (!connection.Play)
-                        return;
+                        return; //TODO: why return? why not continue? -FBC
 
                     var stream = connection.Streams[streamType];
 
                     if (stream.RtpChannel == null)
-                        return;
+                        return; //TODO: why return? why not continue? -FBC
 
                     _logger.LogDebug("Sending RTP session {sessionId} {TransportLogName} RTP timestamp={rtpTimestamp}. Sequence={sequenceNumber}",
                         connection.SessionId, TransportLogName(stream.RtpChannel), rtpTimestamp, stream.SequenceNumber);
@@ -788,6 +800,8 @@ namespace SharpRTSPMultiChannelServer
             this._sdp = sdp;
         }
 
+
+
         #endregion // IDisposable
 
         /// <summary>
@@ -879,186 +893,5 @@ namespace SharpRTSPMultiChannelServer
                 TimeSinceLastRtspKeepAlive = DateTime.UtcNow;
             }
         }
-    }
-
-    public interface IRtpSender
-    {
-        void FeedInRawRTP(int streamType, uint rtpTimestamp, List<Memory<byte>> rtpPackets);
-        bool CanAcceptNewSamples();
-        //Create an event named ClientRemoved having client ip address as parameter
-        /// <summary>
-        /// Client removed event. Parameter is the client IP address and ID port.
-        /// </summary>
-        event EventHandler<string> ClientRemoved;
-
-    }
-
-    public interface ITrack
-    {
-        IRtpSender Sink { get; set; }
-
-        /// <summary>
-        /// Codec name.
-        /// </summary>
-        string Codec { get; }
-
-        /// <summary>
-        /// Track ID. Used to identify the track in the SDP.
-        /// </summary>
-        int ID { get; set; }
-
-        /// <summary>
-        /// Payload type.
-        /// </summary>
-        int PayloadType { get; set; }
-
-        /// <summary>
-        /// Is the track ready?
-        /// </summary>
-        bool IsReady { get; }
-
-        /// <summary>
-        /// Build the SDP for this track.
-        /// </summary>
-        /// <param name="sdp">SDP <see cref="StringBuilder"/>.</param>
-        /// <returns><see cref="StringBuilder"/>.</returns>
-        StringBuilder BuildSDP(StringBuilder sdp);
-
-        /// <summary>
-        /// Creates RTP packets.
-        /// </summary>
-        /// <param name="samples">An array of samples.</param>
-        /// <param name="rtpTimestamp">RTP timestamp in the timescale of the track.</param>
-        /// <returns>RTP packets.</returns>
-        (List<Memory<byte>>, List<IMemoryOwner<byte>>) CreateRtpPackets(List<byte[]> samples, uint rtpTimestamp);
-
-        void FeedInRawSamples(uint rtpTimestamp, List<byte[]> samples);
-    }
-
-    public class CustomLoggerFactory : ILoggerFactory
-    {
-        public void AddProvider(ILoggerProvider provider)
-        { }
-
-        public ILogger CreateLogger(string categoryName)
-        {
-            return new CustomLogger();
-        }
-
-        public void Dispose()
-        { }
-    }
-
-    public class CustomLogger : ILogger
-    {
-        class CustomLoggerScope<TState> : IDisposable
-        {
-            public CustomLoggerScope(TState state)
-            {
-                State = state;
-            }
-            public TState State { get; }
-            public void Dispose()
-            { }
-        }
-        public IDisposable BeginScope<TState>(TState state)
-        {
-            return new CustomLoggerScope<TState>(state);
-        }
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return true;
-        }
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
-        {
-            switch (logLevel)
-            {
-                case LogLevel.Trace:
-                    {
-                        if (SharpRTSPMultiChannelServer.Log.TraceEnabled)
-                        {
-                            SharpRTSPMultiChannelServer.Log.Trace(formatter.Invoke(state, exception));
-                        }
-                    }
-                    break;
-
-                case LogLevel.Debug:
-                    {
-                        if (SharpRTSPMultiChannelServer.Log.DebugEnabled)
-                        {
-                            SharpRTSPMultiChannelServer.Log.Debug(formatter.Invoke(state, exception));
-                        }
-                    }
-                    break;
-
-                case LogLevel.Information:
-                    {
-                        if (SharpRTSPMultiChannelServer.Log.InfoEnabled)
-                        {
-                            SharpRTSPMultiChannelServer.Log.Info(formatter.Invoke(state, exception));
-                        }
-                    }
-                    break;
-
-                case LogLevel.Warning:
-                    {
-                        if (SharpRTSPMultiChannelServer.Log.WarnEnabled)
-                        {
-                            SharpRTSPMultiChannelServer.Log.Warn(formatter.Invoke(state, exception));
-                        }
-                    }
-                    break;
-
-                case LogLevel.Error:
-                case LogLevel.Critical:
-                    {
-                        if (SharpRTSPMultiChannelServer.Log.ErrorEnabled)
-                        {
-                            SharpRTSPMultiChannelServer.Log.Error(formatter.Invoke(state, exception));
-                        }
-                    }
-                    break;
-
-                default:
-                    {
-                        Debug.WriteLine($"Unknown trace level: {logLevel}");
-                    }
-                    break;
-            }
-        }
-    }
-
-    internal static class Utilities
-    {
-        public static byte[] FromHexString(string hex)
-        {
-#if !NETCOREAPP
-            byte[] raw = new byte[hex.Length / 2];
-            for (int i = 0; i < raw.Length; i++)
-            {
-                raw[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
-            }
-            return raw;
-#else
-            return Convert.FromHexString(hex);
-#endif
-        }
-
-        public static string ToHexString(byte[] data)
-        {
-#if !NETCOREAPP
-            string hexString = BitConverter.ToString(data);
-            hexString = hexString.Replace("-", "");
-            return hexString;
-#else
-            return Convert.ToHexString(data);
-#endif
-        }
-    }
-
-    public enum TrackType : int
-    {
-        Video = 0,
-        Audio = 1
     }
 }
