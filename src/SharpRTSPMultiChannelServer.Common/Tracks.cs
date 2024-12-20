@@ -1,4 +1,4 @@
-﻿namespace SharpRTSPMultiChannelServer
+﻿namespace SharpRTSPMultiChannelServer.Common
 {
     public class Tracks
     {

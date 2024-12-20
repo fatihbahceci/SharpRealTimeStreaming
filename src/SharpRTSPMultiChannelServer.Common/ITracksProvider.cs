@@ -1,4 +1,4 @@
-﻿namespace SharpRTSPMultiChannelServer
+﻿namespace SharpRTSPMultiChannelServer.Common
 {
     public interface ITracksProvider
     {
@@ -12,6 +12,6 @@
         /// <param name="remoteAddress"></param>
         /// <param name="requestUrl"></param>
         /// <returns></returns>
-        Tracks GetTracks(IRtpSender sender,string remoteAddress, string requestUrl);
+        Tracks GetTracks(IRtpSender sender, string remoteAddress, string requestUrl);
     }
 }

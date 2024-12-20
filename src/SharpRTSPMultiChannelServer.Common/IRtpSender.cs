@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace SharpRTSPMultiChannelServer
+namespace SharpRTSPMultiChannelServer.Common
 {
     public interface IRtpSender
     {
